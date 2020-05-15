@@ -6,9 +6,16 @@ s.waitForBoot {
 	"Pulsar synthesis patch".postln;
 
 	SynthDef(\grain, {
-		| freq = 220, pulse = 0.3, speed = 1|
-		var o, env, sig;
-		o = SinOsc.ar(speed * freq / pulse);
+		| freq = 220, pulse = 0.3, speed = 1, waveform = 0 |
+		var o, env, sig, class, f;
+		f = speed * freq / pulse;
+		o = Select.ar(waveform, [
+			SinOsc.ar(f),  // 0
+			Impulse.ar(f), // 1
+			Saw.ar(f),     // 2
+			WhiteNoise.ar()// 3
+		]);
+		//o = class;
 		env = EnvGen.ar(
 			Env.new(
 				levels: [0, 1, 1, 0],
@@ -16,7 +23,7 @@ s.waitForBoot {
 			),
 			doneAction: 2
 		);
-		sig = o * env;
+		sig = env * o;
 		Out.ar(0, sig!2);
 	}).add;
 
@@ -25,13 +32,15 @@ s.waitForBoot {
 	Pdefn(\freq, 220);
 	Pdefn(\speed, 1);
 	Pdefn(\pulse, 0.5);
+	Pdefn(\waveform, 0);
 	Pdef(\psar,
 		Pbind(
 			\instrument, \grain,
 			\freq, Pdefn(\freq);,
 			\dur, 1 / Pdefn(\freq),
 			\pulse, Pdefn(\pulse),
-			\speed, Pdefn(\speed)
+			\speed, Pdefn(\speed),
+			\waveform, Pdefn(\waveform)
 		)
 	).play;
 
@@ -41,7 +50,6 @@ s.waitForBoot {
 		var arr, ind;
 		a = [1/8, 1/4, 1/2, 1, 2, 4, 8];
 		Pdefn(\speed, a.at(msg[1].linlin(0, 1, 0, 6).round));
-		arr.at(ind).postln;
 	},
 	'/neb/speed',recvPort:~rPort);
 
@@ -54,6 +62,13 @@ s.waitForBoot {
 	},
 	'/neb/pitch',recvPort:~rPort);
 
+	OSCdef( \osc_start, {
+		arg msg, time, addr, recvPort;
+		a = [0, 1, 2, 3];
+		Pdefn(\waveform, a.at(msg[1].linlin(0, 1, 0, 3).round));
+	},
+	'/neb/start',recvPort:~rPort);
+
 	OSCdef( \osc_overlap, {
 		arg msg, time, addr, recvPort;
 		Pdefn(\pulse, msg[1]);
@@ -64,10 +79,7 @@ s.waitForBoot {
 /*
 s.scope;
 Pdefn(\pulse, 0.1)
-Pdefn(\freq, 220)
+Pdefn(\freq, 110)
 Pdefn(\speed, 1);
-a = [1/8, 1/4, 1/2, 1, 2, 4, 8];
-a.at(2.linlin(0, 1, 0, 6).round)
-
-2.linlin(0, 1, 0, 7)
+Pdefn(\waveform, 3);
 */
